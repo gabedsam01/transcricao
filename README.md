@@ -1,156 +1,108 @@
-# 🎙️ Transcritor de Vídeos Web (Whisper + Gradio)
+# 🎙️ Transcription API (Whisper)
 
-Uma aplicação web leve e local para transcrever áudios e vídeos utilizando a inteligência artificial **Whisper** (da OpenAI). Com uma interface amigável construída em **Gradio**, você pode rodar este servidor no seu computador e acessá-lo pelo celular (ou qualquer outro dispositivo na mesma rede Wi-Fi) para fazer uploads e obter as transcrições em texto.
-
----
+API REST robusta e leve para transcrição de áudio e vídeo utilizando o modelo **Whisper** da OpenAI. Otimizada para execução em ambientes com recursos limitados (como VPS Oracle ARM64) utilizando **FastAPI** e **Docker**.
 
 ## ✨ Funcionalidades
 
-- **Processamento 100% Local:** Suas mídias não são enviadas para a nuvem. A transcrição acontece no seu próprio hardware.
-- **Acesso Remoto Local:** Acesse a interface web via navegador pelo celular usando o IP da máquina host.
-- **Extração Automática:** Não é necessário extrair o áudio do vídeo manualmente; o sistema aceita `.mp4`, `.mkv`, `.avi`, etc., e faz a conversão em segundo plano.
+- **API REST Stateless:** Fácil de integrar com qualquer frontend (Lovable, React, Vue, etc).
+- **Processamento em Segundo Plano:** Utiliza FFmpeg para processar diversos formatos de mídia (.mp4, .mp3, .wav, .mkv, etc).
+- **Otimização de Memória:** Streaming de upload em chunks para evitar estouro de RAM em arquivos grandes.
+- **Warm-up de Modelo:** O modelo é carregado na inicialização para garantir respostas rápidas no primeiro request.
 
----
+## ⚙️ Variáveis de Ambiente
 
-## 🛠️ Pré-requisitos
+Configure estas variáveis no seu arquivo `.env` ou diretamente no ambiente do Docker:
 
-Antes de começar, você precisa ter instalado no seu sistema:
+| Variável | Descrição | Padrão |
+|----------|-----------|---------|
+| `WHISPER_MODEL` | Tamanho do modelo (`tiny`, `base`, `small`, `medium`, `large`) | `medium` |
+| `WHISPER_LANGUAGE` | Forçar um idioma específico (ex: `pt`, `en`) | Auto-detect |
+| `MAX_FILE_SIZE_MB` | Limite máximo de upload em Megabytes | `500` |
+| `PORT` | Porta onde a API será exposta | `8000` |
 
-1. **Python 3.8 ou superior** (Recomendado: 3.10+)
-2. **FFmpeg:** Um software essencial de processamento de mídia que o Whisper utiliza nos bastidores.
+## 🚀 Deploy no Portainer / Docker Compose
 
-### Como instalar o FFmpeg
+Para rodar a API no seu servidor, basta copiar o conteúdo abaixo e colar no seu **Stack** do Portainer ou criar um arquivo `docker-compose.yml`:
 
-**Linux (Ubuntu/Debian):**
-```bash
-sudo apt update && sudo apt install ffmpeg
+```yaml
+version: '3.8'
+
+services:
+  whisper-api:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - WHISPER_MODEL=${WHISPER_MODEL:-medium}
+      - WHISPER_LANGUAGE=${WHISPER_LANGUAGE}
+      - MAX_FILE_SIZE_MB=${MAX_FILE_SIZE_MB:-500}
+    volumes:
+      - whisper-cache:/root/.cache/whisper
+    deploy:
+      resources:
+        limits:
+          memory: 12G
+
+volumes:
+  whisper-cache:
 ```
 
-**Windows** — Abra o terminal como administrador e rode:
-```bash
-winget install ffmpeg
-```
-> Feche e reabra o terminal após a instalação.
+## 🔌 Guia de Conexão (Lovable / Frontend)
 
-**macOS:**
-```bash
-brew install ffmpeg
-```
+Exemplo de como conectar seu frontend Lovable à API de transcrição:
 
----
+```javascript
+const transcribeAudio = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
 
-## 🚀 Instalação Passo a Passo
+  try {
+    const response = await fetch('https://sua-api.com/transcribe', {
+      method: 'POST',
+      body: formData,
+    });
 
-### 1. Clone o repositório ou baixe os arquivos
-
-Abra o terminal e entre na pasta onde deseja colocar o projeto:
-
-```bash
-git clone https://github.com/gabedsam01/transcricao.git
-cd transcricao
-```
-
-> Se não estiver usando Git, basta criar a pasta manualmente e colocar os arquivos `app_web.py` e `requirements.txt` dentro dela.
-
----
-
-### 2. Crie um Ambiente Virtual (Venv)
-
-Isso garante que as dependências do projeto não entrem em conflito com o seu sistema.
-
-**Linux/macOS:**
-```bash
-python3 -m venv venv
+    if (!response.ok) throw new Error('Falha na transcrição');
+    
+    const data = await response.json();
+    console.log('Texto transcrito:', data.text);
+    return data;
+  } catch (error) {
+    console.error('Erro:', error);
+  }
+};
 ```
 
-**Windows:**
-```bash
-python -m venv venv
+## 📍 Endpoints
+
+### `GET /health`
+Verifica se a API está online e qual modelo está carregado.
+
+**Resposta de Exemplo:**
+```json
+{
+  "status": "ok",
+  "model": "medium",
+  "device": "cpu"
+}
 ```
 
----
+### `POST /transcribe`
+Faz o upload de um arquivo e retorna a transcrição completa.
 
-### 3. Ative o Ambiente Virtual
+**Parâmetros (Form Data):**
+- `file`: Arquivo de áudio ou vídeo.
 
-**Linux/macOS:**
-```bash
-source venv/bin/activate
-```
-
-**Windows (Prompt de Comando):**
-```bash
-venv\Scripts\activate
-```
-
----
-
-### 4. Instale as Dependências
-
-Com o ambiente ativado (você verá `(venv)` no início da linha de comando), instale as bibliotecas necessárias:
-
-```bash
-pip install -r requirements.txt
-```
-
----
-
-## 💻 Como Executar
-
-Sempre que quiser rodar a aplicação, certifique-se de que o ambiente virtual está ativado e execute:
-
-```bash
-python app_web.py
-```
-
-- **No próprio computador:** Abra o navegador e acesse `http://localhost:5000` ou `http://127.0.0.1:5000`.
-- **Pelo celular (mesmo Wi-Fi):**
-  1. Descubra o IP local do seu computador:
-     - Linux: `hostname -I`
-     - Windows: `ipconfig`
-  2. No navegador do celular, acesse: `http://<SEU_IP_LOCAL>:5000`
-     - Exemplo: `http://192.168.1.15:5000`
-
-> **Nota:** Na primeira execução, o script fará o download do modelo de IA. Isso pode levar alguns minutos dependendo da sua internet. Nas próximas vezes, o carregamento será instantâneo.
-
----
-
-## ⚙️ Dicas Avançadas
-
-### Rodando em Segundo Plano (via SSH)
-
-Se você iniciou o servidor via SSH e não quer que ele feche ao desconectar, utilize o `nohup` (Linux/macOS):
-
-```bash
-nohup python app_web.py > log.txt 2>&1 &
-```
-
-Isso manterá o servidor rodando em background. Para encerrá-lo depois:
-
-```bash
-ps aux | grep app_web.py
-kill <PID>
+**Resposta de Exemplo:**
+```json
+{
+  "text": "Conteúdo da transcrição...",
+  "language": "pt",
+  "segments": [...],
+  "usage_example": "fetch('URL/transcribe', { method: 'POST', body: new FormData().append('file', file) })"
+}
 ```
 
 ---
-
-### Trocando o Tamanho do Modelo
-
-Por padrão, o script utiliza o modelo `base`, que oferece um ótimo equilíbrio entre velocidade e precisão. Para transcrições mais precisas (ao custo de maior tempo de processamento), edite o arquivo `app_web.py` e altere a linha:
-
-```python
-modelo = whisper.load_model("base")
-# Opções: "tiny", "base", "small", "medium", "large"
-```
-
-| Modelo   | Velocidade | Precisão  |
-|----------|------------|-----------|
-| `tiny`   | ⚡⚡⚡⚡⚡ | ⭐        |
-| `base`   | ⚡⚡⚡⚡   | ⭐⭐      |
-| `small`  | ⚡⚡⚡     | ⭐⭐⭐    |
-| `medium` | ⚡⚡       | ⭐⭐⚡⭐  |
-| `large`  | ⚡         | ⭐⭐⭐⭐⭐ |
-
----
-
-Desenvolvido com Python, [OpenAI Whisper](https://github.com/openai/whisper) e [Gradio](https://www.gradio.app/).
-# transcricao
+Desenvolvido com FastAPI e OpenAI Whisper.
