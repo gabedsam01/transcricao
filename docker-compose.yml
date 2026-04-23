@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  whisper-api:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      - WHISPER_MODEL=${WHISPER_MODEL:-medium}
+      - WHISPER_LANGUAGE=${WHISPER_LANGUAGE}
+      - MAX_FILE_SIZE_MB=${MAX_FILE_SIZE_MB:-500}
+    volumes:
+      - whisper-cache:/root/.cache/whisper
+    deploy:
+      resources:
+        limits:
+          memory: 12G
+
+volumes:
+  whisper-cache:
