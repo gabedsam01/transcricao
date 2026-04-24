@@ -3,8 +3,8 @@ from app.config import Settings
 
 def test_settings_default_values():
     settings = Settings()
-    assert settings.WHISPER_MODEL == "medium"
-    assert settings.WHISPER_LANGUAGE is None
+    assert settings.WHISPER_MODEL == "small"
+    assert settings.WHISPER_LANGUAGE == "pt"
     assert settings.MAX_FILE_SIZE_MB == 500
     assert settings.PORT == 8000
 

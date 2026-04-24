@@ -2,20 +2,38 @@ version: '3.8'
 
 services:
   whisper-api:
-    build: .
-    restart: unless-stopped
-    ports:
-      - "${PORT:-8000}:8000"
+    image: gabedsam01/whisper-fast-api:latest
     environment:
-      - WHISPER_MODEL=${WHISPER_MODEL:-medium}
-      - WHISPER_LANGUAGE=${WHISPER_LANGUAGE}
+      - PORT=8000
+      - WHISPER_MODEL=${WHISPER_MODEL:-small}
+      - WHISPER_LANGUAGE=${WHISPER_LANGUAGE:-pt}
       - MAX_FILE_SIZE_MB=${MAX_FILE_SIZE_MB:-500}
+      - FW_DEVICE=${FW_DEVICE:-cpu}
+      - FW_COMPUTE_TYPE=${FW_COMPUTE_TYPE:-int8}
+      - FW_CPU_THREADS=${FW_CPU_THREADS:-4}
     volumes:
       - whisper-cache:/root/.cache/whisper
+    networks:
+      - FioriniNet
     deploy:
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 3
+        window: 120s
       resources:
         limits:
-          memory: 12G
+          memory: 4G
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.whisper-api.rule=Host(`${DOMAIN}`)"
+        - "traefik.http.routers.whisper-api.entrypoints=websecure"
+        - "traefik.http.routers.whisper-api.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.whisper-api.loadbalancer.server.port=8000"
 
 volumes:
   whisper-cache:
+
+networks:
+  FioriniNet:
+    external: true

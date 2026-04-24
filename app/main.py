@@ -2,13 +2,25 @@ import time
 import os
 import shutil
 import tempfile
-from fastapi import FastAPI, UploadFile, HTTPException
+from fastapi import FastAPI, UploadFile, HTTPException, Form
+from typing import Optional
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from app.config import settings
 from app.logger import logger
 from app.transcribe import transcribe_file, get_model
 
-app = FastAPI(title="Transcription API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Load the model on startup to avoid delay on the first request.
+    """
+    logger.info("Initializing application startup...")
+    get_model()
+    logger.info("Application startup complete.")
+    yield
+
+app = FastAPI(title="Transcription API", lifespan=lifespan)
 
 # Configure CORS
 app.add_middleware(
@@ -18,15 +30,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.on_event("startup")
-async def startup_event():
-    """
-    Load the model on startup to avoid delay on the first request.
-    """
-    logger.info("Initializing application startup...")
-    get_model()
-    logger.info("Application startup complete.")
-
 @app.get("/health")
 async def health():
     """
@@ -35,11 +38,12 @@ async def health():
     return {
         "status": "ok",
         "model": settings.WHISPER_MODEL,
-        "device": "cpu"  # In this VPS setup, it's CPU-only
+        "device": settings.FW_DEVICE,
+        "compute_type": settings.FW_COMPUTE_TYPE
     }
 
 @app.post("/transcribe")
-async def transcribe(file: UploadFile):
+async def transcribe(file: UploadFile, language: Optional[str] = Form(None)):
     """
     Transcribe an uploaded audio/video file.
     """
@@ -66,13 +70,12 @@ async def transcribe(file: UploadFile):
             tmp.close()  # Close the file before transcribing to ensure it's written
             
             # 4. Perform transcription
-            result = transcribe_file(tmp_path)
+            result = transcribe_file(tmp_path, language=language)
             
             duration = time.time() - start_time
             logger.info(f"Transcription completed in {duration:.2f}s for {file.filename} ({size / 1024 / 1024:.2f} MB)")
             
-            # 5. Add usage example for Lovable/frontend integration
-            result["usage_example"] = "fetch('URL/transcribe', { method: 'POST', body: new FormData().append('file', file) })"
+            result["duration"] = duration
             
             return result
             
@@ -82,7 +85,7 @@ async def transcribe(file: UploadFile):
             logger.exception(f"Error processing {file.filename}: {str(e)}")
             raise HTTPException(status_code=500, detail=str(e))
         finally:
-            # 6. Cleanup
+            # 5. Cleanup
             if os.path.exists(tmp_path):
                 os.unlink(tmp_path)
 
