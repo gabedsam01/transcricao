@@ -1,10 +1,13 @@
-name: Build and Push Docker Image
+name: Build and Push whisper-fast-api
 
 on:
   push:
     branches:
       - main
   workflow_dispatch:
+
+env:
+  IMAGE_NAME: gabedsam01/whisper-fast-api
 
 jobs:
   build-and-push:
@@ -28,7 +31,9 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64
+          pull: true
+          no-cache: true
           push: true
-          tags: gabedsam01/whisper-fast-api:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
