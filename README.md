@@ -9,6 +9,26 @@ API REST robusta e leve para transcrição de áudio e vídeo utilizando o model
 - **Otimização de Memória:** Streaming de upload em chunks para evitar estouro de RAM em arquivos grandes.
 - **Warm-up de Modelo:** O modelo é carregado na inicialização para garantir respostas rápidas no primeiro request.
 
+## 🚀 Deploy e CI/CD
+
+### GitHub Actions (CI/CD Multi-Arch)
+O projeto inclui um workflow automatizado que constrói e publica a imagem Docker para `linux/amd64` (x86_64) e `linux/arm64` no Docker Hub sempre que há um push na branch `main`.
+
+#### 🔑 Configuração de Secrets no GitHub
+Para que o workflow funcione, você deve adicionar os seguintes secrets no seu repositório (**Settings > Secrets and variables > Actions**):
+
+1. `DOCKERHUB_USERNAME`: Seu nome de usuário no Docker Hub (ex: `gabedsam01`).
+2. `DOCKERHUB_TOKEN`: Um Personal Access Token gerado no Docker Hub (**Account Settings > Security > Personal access tokens**).
+
+#### ✅ Como Verificar a Imagem Multi-Arch
+Após o término do workflow, você pode verificar se a imagem suporta ambas as arquiteturas usando o comando:
+
+```bash
+docker manifest inspect gabedsam01/whisper-local-api:latest
+```
+
+No campo `platforms`, você deverá ver entradas para `amd64` e `arm64`.
+
 ## ⚙️ Variáveis de Ambiente
 
 Configure estas variáveis no seu arquivo `.env` ou diretamente no ambiente do Docker:
