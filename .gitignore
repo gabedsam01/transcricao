@@ -1,25 +1,40 @@
-# Ambiente Virtual (Muito importante ignorar!)
-venv/
-env/
-.env
-
-# Arquivos compilados do Python
+# Python
 __pycache__/
 *.py[cod]
-*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
 
-# Logs (Se você usar aquele comando nohup, ele gera logs)
-*.log
-nohup.out
+# Virtualenv
+.venv/
+venv/
+env/
+ENV/
 
-# Vídeos e Áudios de teste local (Para não subir arquivos pesados no repositório)
-*.mp4
-*.avi
-*.mkv
-*.mov
-*.mp3
-*.wav
+# Env files
+.env
+.env.*
 
-# Sistema Operacional
+# Build / dist
+build/
+dist/
+*.egg-info/
+
+# IDE / editor
+.vscode/
+.idea/
+
+# OS
 .DS_Store
-Thumbs.db
+
+# Project temp / outputs
+output-tests/
+tmp-tests/
+*.tmp
+*.log
+
+# Local docs/plans if not needed in repo
+docs/superpowers/plans/
